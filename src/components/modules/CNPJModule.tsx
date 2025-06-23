@@ -36,13 +36,18 @@ export const CNPJModule: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Parse lat/long
-    const [lat, lng] = formData.latLong.split(',').map(coord => parseFloat(coord.trim()));
+    let lat = 0;
+    let lng = 0;
+    if (formData.latLong) {
+      const coords = formData.latLong.split(',').map(coord => parseFloat(coord.trim()));
+      lat = coords[0] || 0;
+      lng = coords[1] || 0;
+    }
     
     const cnpjData = {
       ...formData,
-      latitude: lat || 0,
-      longitude: lng || 0,
+      latitude: lat,
+      longitude: lng,
     };
 
     if (editingCnpj) {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, Plus, Search, Download, Upload, Edit2, Trash2, Eye } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
 import { Occurrence } from '../../types';
+import { UNITS } from '../../utils/constants';
 
 type TabType = 'consult' | 'register';
 
@@ -352,22 +353,21 @@ export const OccurrenceModule: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unidade *
+              <div className="col-span-1">
+                <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
+                  Unidade
                 </label>
                 <select
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  id="unit"
+                  name="unit"
                   value={formData.unit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({...prev, unit: e.target.value}))}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 >
-                  <option value="">Selecione...</option>
-                  <option value="DP Central">DP Central</option>
-                  <option value="DP Norte">DP Norte</option>
-                  <option value="DP Sul">DP Sul</option>
-                  <option value="DP Leste">DP Leste</option>
-                  <option value="DP Oeste">DP Oeste</option>
+                  <option value="">Selecione a Unidade</option>
+                  {UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
                 </select>
               </div>
 

@@ -61,7 +61,6 @@ export const Login: React.FC = () => {
                 autoComplete="email"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="admin@mapainteligencia.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -78,7 +77,6 @@ export const Login: React.FC = () => {
                 autoComplete="current-password"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="admin@123"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -107,15 +105,6 @@ export const Login: React.FC = () => {
             </button>
           </div>
         </form>
-
-        {/* Demo Credentials */}
-        <div className="text-center text-sm text-slate-300">
-          <p>Credenciais de demonstração:</p>
-          <p className="mt-1">
-            <strong>Email:</strong> admin@mapainteligencia.com<br />
-            <strong>Senha:</strong> admin@123
-          </p>
-        </div>
       </div>
     </div>
   );

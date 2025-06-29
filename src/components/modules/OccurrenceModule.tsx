@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Plus, Search, Download, Upload, Edit2, Trash2, Eye } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { Occurrence } from '../../types';
+import { Occurrence, FileAttachment } from '../../types';
 import { UNITS } from '../../utils/constants';
+import { downloadModel, MODEL_FILES } from '../../utils/downloadUtils';
+import { convertFilesToAttachments } from '../../utils/fileUtils';
+import axios from 'axios';
 
 type TabType = 'consult' | 'register';
 
@@ -12,7 +15,17 @@ export const OccurrenceModule: React.FC = () => {
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
   const [selectedOccurrence, setSelectedOccurrence] = useState<Occurrence | null>(null);
   
-  const { occurrences, cpfs, addOccurrence, updateOccurrence, deleteOccurrence } = useDataStore();
+  const { occurrences, addOccurrence, updateOccurrence, deleteOccurrence, fetchOccurrences } = useDataStore();
+
+  // Carregar dados quando o componente for montado
+  useEffect(() => {
+    fetchOccurrences();
+  }, [fetchOccurrences]);
+
+  // Função para baixar o modelo Excel
+  const handleDownloadModel = () => {
+    downloadModel(MODEL_FILES.occurrence.file, MODEL_FILES.occurrence.name);
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -30,38 +43,25 @@ export const OccurrenceModule: React.FC = () => {
     status: 'Em andamento' as 'Em andamento' | 'Finalizada',
     observations: '',
     finalConsiderations: '',
-    documents: [] as any[]
+    documents: [] as FileAttachment[]
   });
 
-  const filteredOccurrences = occurrences.filter(occ => {
+  const filteredOccurrences = occurrences.filter(occurrence => {
     const term = searchTerm.toLowerCase();
-    // Safely check each property before calling toLowerCase()
-    const typeMatch = occ.type && occ.type.toLowerCase().includes(term);
-    const unitMatch = occ.unit && occ.unit.toLowerCase().includes(term);
-    const responsibleMatch = occ.responsible && occ.responsible.toLowerCase().includes(term);
+    const typeMatch = occurrence.type && occurrence.type.toLowerCase().includes(term);
+    const unitMatch = occurrence.unit && occurrence.unit.toLowerCase().includes(term);
+    const responsibleMatch = occurrence.responsible && occurrence.responsible.toLowerCase().includes(term);
     return typeMatch || unitMatch || responsibleMatch;
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Parse lat/long
-    const [lat, lng] = formData.latLong.split(',').map(coord => parseFloat(coord.trim()));
-    
-    const occurrenceData = {
-      ...formData,
-      latitude: lat || 0,
-      longitude: lng || 0,
-    };
-
     if (editingOccurrence) {
-      updateOccurrence(editingOccurrence.id, occurrenceData);
+      updateOccurrence(editingOccurrence.id, formData);
       setEditingOccurrence(null);
     } else {
-      addOccurrence(occurrenceData);
+      addOccurrence(formData);
     }
-    
-    // Reset form
     setFormData({
       type: '',
       communicationType: '',
@@ -98,7 +98,7 @@ export const OccurrenceModule: React.FC = () => {
       status: occurrence.status,
       observations: occurrence.observations,
       finalConsiderations: occurrence.finalConsiderations || '',
-      documents: occurrence.documents
+      documents: occurrence.documents || []
     });
     setEditingOccurrence(occurrence);
     setActiveTab('register');
@@ -138,6 +138,33 @@ export const OccurrenceModule: React.FC = () => {
       : 'bg-blue-100 text-blue-800';
   };
 
+  // Estado para feedback do upload
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Função para upload de Excel
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post('http://192.168.1.12:80/api/upload/occurrence', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUploadResult(response.data.message || 'Upload realizado com sucesso!');
+      fetchOccurrences(); // Atualiza a lista após upload
+    } catch (error: any) {
+      setUploadResult(error.response?.data?.error || 'Erro ao importar arquivo.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -159,10 +186,10 @@ export const OccurrenceModule: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-3 px-4 border-b-2 font-medium text-sm flex items-center rounded-t-lg transition-all duration-200 ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-gray-400 bg-gray-300 text-gray-900 shadow-sm'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
               <tab.icon className="h-4 w-4 mr-2" />
@@ -301,11 +328,19 @@ export const OccurrenceModule: React.FC = () => {
           <p className="text-gray-600 mb-6 ml-9">Forneça os detalhes para criar ou editar uma ocorrência.</p>
           
           <div className="flex justify-end gap-2 mb-6 -mt-16">
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center">
+            <button
+              type="button"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
               <Upload className="h-4 w-4 mr-2" />
-              Upload Excel
+              {uploading ? 'Enviando...' : 'Upload Excel'}
             </button>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+            <button 
+              onClick={handleDownloadModel}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
               <Download className="h-4 w-4 mr-2" />
               Baixar Modelo
             </button>
@@ -354,7 +389,7 @@ export const OccurrenceModule: React.FC = () => {
               </div>
 
               <div className="col-span-1">
-                <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
                   Unidade
                 </label>
                 <select
@@ -362,7 +397,7 @@ export const OccurrenceModule: React.FC = () => {
                   name="unit"
                   value={formData.unit}
                   onChange={(e) => setFormData(prev => ({...prev, unit: e.target.value}))}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Selecione a Unidade</option>
                   {UNITS.map(unit => (
@@ -510,6 +545,62 @@ export const OccurrenceModule: React.FC = () => {
               />
             </div>
 
+            {/* Campo para Anexar Documentos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Anexar Documentos
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+                  className="hidden"
+                  id="document-upload-occurrence"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      documents: [...prev.documents, ...convertFilesToAttachments(files)]
+                    }));
+                  }}
+                />
+                <label htmlFor="document-upload-occurrence" className="cursor-pointer">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Clique para anexar documentos ou arraste arquivos aqui
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PDF, DOC, DOCX, JPG, PNG, XLSX (máx. 10MB cada)
+                  </p>
+                </label>
+              </div>
+              {formData.documents.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Documentos anexados:</h4>
+                  <div className="space-y-2">
+                    {formData.documents.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-600">{doc.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              documents: prev.documents.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <div className="flex justify-end space-x-4">
               <button
@@ -623,6 +714,10 @@ export const OccurrenceModule: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {uploadResult && (
+        <div className={`mt-2 text-sm ${uploadResult.includes('sucesso') ? 'text-green-600' : 'text-red-600'}`}>{uploadResult}</div>
       )}
     </div>
   );

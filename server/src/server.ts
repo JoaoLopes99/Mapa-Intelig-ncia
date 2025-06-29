@@ -10,9 +10,10 @@ import socialNetworkRoutes from './routes/social-networks';
 import financialRoutes from './routes/financials';
 import corporateRoutes from './routes/corporates';
 import occurrenceRoutes from './routes/occurrences';
+import uploadRoutes from './routes/upload';
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Super-Logger Middleware - A PRIMEIRA COISA QUE O APP USA
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -44,6 +45,7 @@ app.use('/api/social-networks', socialNetworkRoutes);
 app.use('/api/financials', financialRoutes);
 app.use('/api/corporates', corporateRoutes);
 app.use('/api/occurrences', occurrenceRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -63,8 +65,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });
 
 export default app; 

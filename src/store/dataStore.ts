@@ -100,7 +100,7 @@ interface DataState {
   clearAllData: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:80/api';
 
 export const useDataStore = create<DataState>((set, get) => ({
   // Estado inicial

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Users, Plus, Search, Download, Upload, Edit2, Trash2, Eye, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Plus, Search, Download, Upload, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { SocialNetwork } from '../../types';
+import { SocialNetwork, FileAttachment } from '../../types';
+import { downloadModel, MODEL_FILES } from '../../utils/downloadUtils';
+import axios from 'axios';
 
 type TabType = 'consult' | 'register';
 
@@ -11,7 +13,13 @@ export const SocialNetworksModule: React.FC = () => {
   const [editingSocialNetwork, setEditingSocialNetwork] = useState<SocialNetwork | null>(null);
   const [selectedSocialNetwork, setSelectedSocialNetwork] = useState<SocialNetwork | null>(null);
   
-  const { socialNetworks, cpfs, addSocialNetwork, updateSocialNetwork, deleteSocialNetwork } = useDataStore();
+  const { socialNetworks, cpfs, addSocialNetwork, updateSocialNetwork, deleteSocialNetwork, fetchSocialNetworks, fetchCpfs } = useDataStore();
+
+  // Carregar dados quando o componente for montado
+  useEffect(() => {
+    fetchSocialNetworks();
+    fetchCpfs();
+  }, [fetchSocialNetworks, fetchCpfs]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -21,7 +29,7 @@ export const SocialNetworksModule: React.FC = () => {
     primaryLinkCpf: '',
     primaryLinkName: '',
     notes: '',
-    documents: [] as any[]
+    documents: [] as FileAttachment[]
   });
 
   const filteredSocialNetworks = socialNetworks.filter(social =>
@@ -125,6 +133,38 @@ export const SocialNetworksModule: React.FC = () => {
     return icons[platform] || '🌐';
   };
 
+  // Função para baixar o modelo Rede Social
+  const handleDownloadModel = () => {
+    downloadModel(MODEL_FILES.socialNetwork.file, MODEL_FILES.socialNetwork.name);
+  };
+
+  // Estado para feedback do upload
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Função para upload de Excel
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post('http://192.168.1.12:80/api/upload/social-network', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUploadResult(response.data.message || 'Upload realizado com sucesso!');
+      fetchSocialNetworks(); // Atualiza a lista após upload
+    } catch (error: any) {
+      setUploadResult(error.response?.data?.error || 'Erro ao importar arquivo.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -140,16 +180,16 @@ export const SocialNetworksModule: React.FC = () => {
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'consult', label: 'Consultar Redes Sociais', icon: Search },
-            { id: 'register', label: 'Cadastrar Rede Social', icon: Plus },
+            { id: 'consult', label: 'Consultar Redes', icon: Search },
+            { id: 'register', label: 'Nova Rede', icon: Plus },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-3 px-4 border-b-2 font-medium text-sm flex items-center rounded-t-lg transition-all duration-200 ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-gray-400 bg-gray-300 text-gray-900 shadow-sm'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
               <tab.icon className="h-4 w-4 mr-2" />
@@ -262,11 +302,19 @@ export const SocialNetworksModule: React.FC = () => {
           <p className="text-gray-600 mb-6 ml-9">Preencha os dados para criar ou editar uma rede social.</p>
           
           <div className="flex justify-end gap-2 mb-6 -mt-16">
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center">
+            <button
+              type="button"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
               <Upload className="h-4 w-4 mr-2" />
-              Upload Excel
+              {uploading ? 'Enviando...' : 'Upload Excel'}
             </button>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+            <button
+              onClick={handleDownloadModel}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
               <Download className="h-4 w-4 mr-2" />
               Baixar Modelo
             </button>
@@ -302,7 +350,7 @@ export const SocialNetworksModule: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Rede (Perfil) *
+                  Nome na Rede (Perfil) *
                 </label>
                 <input
                   type="text"
@@ -368,7 +416,7 @@ export const SocialNetworksModule: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Campo Texto / Observações
+                Observações
               </label>
               <textarea
                 rows={4}
@@ -377,6 +425,72 @@ export const SocialNetworksModule: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Observações sobre a rede social..."
               />
+            </div>
+
+            {/* Campo para Anexar Documentos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Anexar Documentos
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+                  className="hidden"
+                  id="document-upload-social"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      documents: [
+                        ...prev.documents, 
+                        ...files.map(f => ({
+                          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                          name: f.name,
+                          type: f.type,
+                          size: f.size,
+                          url: URL.createObjectURL(f),
+                          uploadedAt: new Date().toISOString()
+                        } as FileAttachment))
+                      ]
+                    }));
+                  }}
+                />
+                <label htmlFor="document-upload-social" className="cursor-pointer">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Clique para anexar documentos ou arraste arquivos aqui
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PDF, DOC, DOCX, JPG, PNG, XLSX (máx. 10MB cada)
+                  </p>
+                </label>
+              </div>
+              {formData.documents.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Documentos anexados:</h4>
+                  <div className="space-y-2">
+                    {formData.documents.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-600">{doc.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              documents: prev.documents.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -478,6 +592,10 @@ export const SocialNetworksModule: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {uploadResult && (
+        <div className={`mt-2 text-sm ${uploadResult.includes('sucesso') ? 'text-green-600' : 'text-red-600'}`}>{uploadResult}</div>
       )}
     </div>
   );

@@ -53,76 +53,74 @@ export const Layout: React.FC = () => {
   return (
     <div className="h-screen flex overflow-hidden bg-gray-100">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${
+      <div className={`fixed inset-y-0 left-0 z-50 bg-[#23272f] shadow-lg rounded-r-lg transform transition-all duration-300 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarExpanded ? 'w-64' : 'w-16'
       }`}>
-        {/* Sidebar Header */}
-        <div className={`flex items-center h-16 px-4 bg-black ${sidebarExpanded ? 'justify-between' : 'justify-center'}`}>
-          <div className="flex items-center space-x-3">
-            <img src={logoRaizen} alt="Logo Raízen" className="h-8 w-8 object-contain flex-shrink-0" />
-            {sidebarExpanded && (
-              <span className="text-white font-bold text-lg whitespace-nowrap">
-                Mapa Inteligência
-              </span>
-            )}
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header restaurado */}
+          <div className={`flex items-center h-16 px-4 bg-black ${sidebarExpanded ? 'justify-between' : 'justify-center'}`}>
+            <div className="flex items-center space-x-3">
+              <img src={logoRaizen} alt="Logo Raízen" className="h-8 w-8 object-contain flex-shrink-0" />
+              {sidebarExpanded && (
+                <span className="text-white font-bold text-lg whitespace-nowrap">
+                  Mapa Inteligência
+                </span>
+              )}
+            </div>
+            {/* Toggle button for desktop */}
+            <button
+              className={`hidden lg:block text-white hover:bg-gray-800 p-1 rounded ${!sidebarExpanded && 'absolute left-full ml-2'}`}
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            >
+              {sidebarExpanded ? (
+                <ChevronLeft className="h-5 w-5" />
+              ) : (
+                <ChevronRight className="h-5 w-5" />
+              )}
+            </button>
+            {/* Close button for mobile */}
+            <button
+              className="lg:hidden text-white"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          
-          {/* Toggle button for desktop */}
-          <button
-            className={`hidden lg:block text-white hover:bg-gray-800 p-1 rounded ${!sidebarExpanded && 'absolute left-full ml-2'}`}
-            onClick={() => setSidebarExpanded(!sidebarExpanded)}
-          >
-            {sidebarExpanded ? (
-              <ChevronLeft className="h-5 w-5" />
-            ) : (
-              <ChevronRight className="h-5 w-5" />
-            )}
-          </button>
-          
-          {/* Close button for mobile */}
-          <button
-            className="lg:hidden text-white"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="mt-8 px-2 space-y-2">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <div key={item.path} className="relative group">
-                <button
-                  onClick={() => {
-                    navigate(item.path);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  } ${!sidebarExpanded ? 'justify-center' : ''}`}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {sidebarExpanded && (
-                    <span className="ml-3 whitespace-nowrap">{item.label}</span>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-2 py-6 space-y-1">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <div key={item.path} className="relative group">
+                  <button
+                    onClick={() => {
+                      navigate(item.path);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                      isActive
+                        ? 'bg-[#181b20] text-white shadow'
+                        : 'text-gray-300 hover:bg-[#23272f] hover:text-white'
+                    } ${sidebarExpanded ? 'px-4' : 'justify-center'}`}
+                  >
+                    <span className="flex items-center justify-center w-10 h-10">
+                      <item.icon className="h-5 w-5" />
+                    </span>
+                    {sidebarExpanded && <span className="ml-3">{item.label}</span>}
+                  </button>
+                  {!sidebarExpanded && (
+                    <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-black text-white text-xs rounded shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                      {item.label}
+                    </span>
                   )}
-                </button>
-                
-                {/* Tooltip for collapsed state */}
-                {!sidebarExpanded && (
-                  <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-gray-800 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                    {item.label}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+                </div>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
       {/* Main content */}

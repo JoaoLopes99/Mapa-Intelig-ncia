@@ -11,6 +11,7 @@ router.get('/', async (req, res) => {
     // Mapear os campos para o formato esperado pelo frontend
     const mappedOccurrences = occurrences.map((occ) => ({
       id: occ.id,
+      name: occ.name || '',
       type: occ.type,
       communicationType: occ.communicationType || '',
       involved: occ.involved ? JSON.parse(occ.involved) : [],
@@ -18,11 +19,11 @@ router.get('/', async (req, res) => {
       latitude: occ.latitude,
       longitude: occ.longitude,
       severity: occ.severity,
-      startDate: occ.date, // 'date' do banco vira 'startDate'
+      startDate: occ.startDate, // Agora usa startDate diretamente
       endDate: occ.endDate || '',
       responsible: occ.responsible,
       status: occ.status,
-      observations: occ.description || '',
+      observations: occ.observations || '', // Agora usa observations
       finalConsiderations: occ.finalConsiderations || '',
       documents: occ.documents ? JSON.parse(occ.documents) : [],
       createdBy: occ.createdBy,
@@ -44,7 +45,10 @@ router.post('/', async (req, res) => {
 
   try {
     const { 
-      type, 
+      name,
+      type,
+      communicationType,
+      involved,
       unit, 
       responsible, 
       severity, 
@@ -53,21 +57,29 @@ router.post('/', async (req, res) => {
       longitude, 
       observations,
       startDate,
+      endDate,
+      finalConsiderations,
       documents, 
       createdBy 
     } = req.body;
     
-    if (!type || !unit || !responsible || !severity || !status || !startDate) {
-      return res.status(400).json({ message: 'Tipo, unidade, responsável, severidade, status e data são obrigatórios' });
+    if (!name || !type || !unit || !responsible || !severity || !status || !startDate) {
+      return res.status(400).json({ message: 'Nome, tipo, unidade, responsável, severidade, status e data são obrigatórios' });
     }
 
     const db = await dbPromise;
     const result = await db.run(
       `INSERT INTO occurrences (
-        type, unit, responsible, severity, status, latitude, longitude, description, date, documents, createdBy, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, name, type, communicationType, involved, unit, responsible, severity, status, 
+        latitude, longitude, observations, startDate, endDate, finalConsiderations, 
+        documents, createdBy, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        Date.now().toString(), // ID único
+        name,
         type,
+        communicationType || '',
+        JSON.stringify(involved || []),
         unit,
         responsible,
         severity,
@@ -76,6 +88,8 @@ router.post('/', async (req, res) => {
         longitude,
         observations || '',
         startDate,
+        endDate || null,
+        finalConsiderations || null,
         JSON.stringify(documents || []),
         createdBy || 'Usuário Desconhecido',
         new Date().toISOString(),
@@ -85,15 +99,20 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       id: result.lastID,
+      name,
       type,
+      communicationType,
+      involved,
       unit,
       responsible,
       severity,
       status,
       latitude,
       longitude,
-      description: observations || '',
-      date: startDate,
+      observations,
+      startDate,
+      endDate,
+      finalConsiderations,
       documents,
       createdBy,
       createdAt: new Date().toISOString(),
@@ -102,6 +121,80 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('!!! OCCURRENCE CREATION DATABASE ERROR !!!');
     console.error(error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+});
+
+// PUT /api/occurrences/:id - Atualizar ocorrência
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      name,
+      type,
+      communicationType,
+      involved,
+      unit, 
+      responsible, 
+      severity, 
+      status, 
+      latitude, 
+      longitude, 
+      observations,
+      startDate,
+      endDate,
+      finalConsiderations,
+      documents 
+    } = req.body;
+    
+    if (!name || !type || !unit || !responsible || !severity || !status || !startDate) {
+      return res.status(400).json({ message: 'Nome, tipo, unidade, responsável, severidade, status e data são obrigatórios' });
+    }
+
+    const db = await dbPromise;
+    await db.run(
+      `UPDATE occurrences SET 
+        name = ?, type = ?, communicationType = ?, involved = ?, unit = ?, responsible = ?, 
+        severity = ?, status = ?, latitude = ?, longitude = ?, observations = ?, 
+        startDate = ?, endDate = ?, finalConsiderations = ?, documents = ?, updatedAt = ?
+      WHERE id = ?`,
+      [
+        name,
+        type,
+        communicationType || '',
+        JSON.stringify(involved || []),
+        unit,
+        responsible,
+        severity,
+        status,
+        latitude,
+        longitude,
+        observations || '',
+        startDate,
+        endDate || null,
+        finalConsiderations || null,
+        JSON.stringify(documents || []),
+        new Date().toISOString(),
+        id
+      ]
+    );
+
+    res.json({ message: 'Ocorrência atualizada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar ocorrência:', error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+});
+
+// DELETE /api/occurrences/:id - Excluir ocorrência
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await dbPromise;
+    await db.run('DELETE FROM occurrences WHERE id = ?', [id]);
+    res.json({ message: 'Ocorrência excluída com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir ocorrência:', error);
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 });

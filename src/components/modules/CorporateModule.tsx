@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Plus, Search, Download, Upload, Edit2, Trash2, Eye, Calendar } from 'lucide-react';
+import { Briefcase, Plus, Search, Download, Upload, Edit2, Trash2, Eye, Calendar, FileText, Building2 } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { Corporate, FileAttachment } from '../../types';
-import { downloadModel, MODEL_FILES } from '../../utils/downloadUtils';
-import { convertFilesToAttachments } from '../../utils/fileUtils';
-import axios from 'axios';
+import { Corporate } from '../../types';
+import { FileUpload } from '../FileUpload';
+import jsPDF from 'jspdf';
+// @ts-ignore
+import autoTable from 'jspdf-autotable';
+import { createProfessionalPDF, formatArray, formatDate } from '../../utils/pdfUtils';
 
 type TabType = 'consult' | 'register';
 
@@ -16,10 +18,11 @@ export const CorporateModule: React.FC = () => {
   
   const { corporates, cpfs, addCorporate, updateCorporate, deleteCorporate, fetchCorporates, fetchCpfs } = useDataStore();
 
-  // Carregar dados quando o componente for montado
+  // Carregar dados quando o componente é montado
   useEffect(() => {
     fetchCorporates();
-  }, [fetchCorporates]);
+    fetchCpfs();
+  }, [fetchCorporates, fetchCpfs]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -32,13 +35,8 @@ export const CorporateModule: React.FC = () => {
     active: 'SIM' as 'SIM' | 'NÃO' | 'N/A',
     leftDueToOccurrence: 'NÃO' as 'SIM' | 'NÃO' | 'N/A',
     notes: '',
-    documents: [] as FileAttachment[]
+    documents: [] as any[]
   });
-
-  // Estado para feedback do upload
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const filteredCorporates = corporates.filter(corporate =>
     (corporate.involvedName && corporate.involvedName.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -127,26 +125,71 @@ export const CorporateModule: React.FC = () => {
     }
   };
 
-  // Função para upload de Excel
-  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadResult(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await axios.post('http://192.168.1.12:80/api/upload/corporate', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setUploadResult(response.data.message || 'Upload realizado com sucesso!');
-      fetchCorporates(); // Atualiza a lista após upload
-    } catch (error: any) {
-      setUploadResult(error.response?.data?.error || 'Erro ao importar arquivo.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  // Função para exportar PDF
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Lista de Vínculos Empresariais', 14, 16);
+    autoTable(doc, {
+      startY: 22,
+      head: [[
+        'Funcionário',
+        'Setor',
+        'Período',
+        'Tempo de Serviço',
+        'Ativo',
+        'Saiu por Ocorrência',
+        'Criado por'
+      ]],
+      body: filteredCorporates.map(corporate => [
+        corporate.involvedName,
+        corporate.sector,
+        `${corporate.startDate} - ${corporate.endDate || 'Atual'}`,
+        calculateServiceTime(corporate.startDate, corporate.endDate),
+        corporate.active,
+        corporate.leftDueToOccurrence,
+        corporate.createdBy || 'N/A'
+      ]),
+    });
+    doc.save('vinculos-empresariais.pdf');
+  };
+
+  // Função para exportar PDF individual de um Corporativo
+  const handleExportCorporate = (corporate: Corporate) => {
+    const doc = new jsPDF();
+    
+    const sections = [
+      {
+        title: 'INFORMAÇÕES CORPORATIVAS',
+        content: [
+          { label: 'CPF do Envolvido', value: corporate.involvedCpf || 'Não informado' },
+          { label: 'Nome do Envolvido', value: corporate.involvedName || 'Não informado' },
+          { label: 'Vínculo Raízen', value: corporate.raizenLink || 'Não informado' },
+          { label: 'Setor', value: corporate.sector || 'Não informado' }
+        ]
+      },
+      {
+        title: 'PERÍODO',
+        content: [
+          { label: 'Data de Início', value: formatDate(corporate.startDate) },
+          { label: 'Data de Término', value: formatDate(corporate.endDate) },
+          { label: 'Ativo', value: corporate.active || 'Não informado' },
+          { label: 'Saiu por Ocorrência', value: corporate.leftDueToOccurrence || 'Não informado' }
+        ]
+      },
+      {
+        title: 'OBSERVAÇÕES',
+        content: [
+          { label: 'Observações', value: corporate.notes || 'Nenhuma observação registrada' }
+        ]
+      }
+    ];
+    
+    createProfessionalPDF(doc, 'CORPORATIVO', sections, {
+      createdBy: corporate.createdBy || 'Sistema',
+      identifier: corporate.involvedCpf || 'cadastro'
+    });
+    
+    doc.save(`corporativo-${corporate.involvedCpf || 'cadastro'}.pdf`);
   };
 
   return (
@@ -154,7 +197,7 @@ export const CorporateModule: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <Briefcase className="h-8 w-8 mr-3 text-blue-600" />
+          <Building2 className="h-5 w-5 text-black mr-2" />
           Gerenciamento Empresarial
         </h1>
         <p className="text-gray-600 mt-2">Cadastro e consulta de vínculos empresariais</p>
@@ -164,19 +207,19 @@ export const CorporateModule: React.FC = () => {
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'consult', label: 'Consultar Empresas', icon: Search },
-            { id: 'register', label: 'Nova Empresa', icon: Plus },
+            { id: 'consult', label: 'Consultar Vínculos Empresariais', icon: Search },
+            { id: 'register', label: 'Cadastrar Vínculo Empresarial', icon: Plus },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`py-3 px-4 border-b-2 font-medium text-sm flex items-center rounded-t-lg transition-all duration-200 ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center rounded-t-md transition-colors duration-150 ${
                 activeTab === tab.id
-                  ? 'border-gray-400 bg-gray-300 text-gray-900 shadow-sm'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'bg-neutral-300' : 'bg-transparent'
               }`}
+              style={activeTab === tab.id ? { backgroundColor: '#d4d4d4', color: '#000' } : { color: '#000' }}
             >
-              <tab.icon className="h-4 w-4 mr-2" />
+              <tab.icon className={`h-4 w-4 mr-2 ${activeTab === tab.id ? 'text-black' : 'text-black'}`} />
               {tab.label}
             </button>
           ))}
@@ -201,7 +244,11 @@ export const CorporateModule: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center">
+              <button 
+                className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+                style={{ backgroundColor: '#181a1b' }}
+                onClick={handleExportPDF}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Exportar PDF
               </button>
@@ -286,21 +333,30 @@ export const CorporateModule: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
                             onClick={() => setSelectedCorporate(corporate)}
-                            className="text-green-600 hover:text-green-900"
+                            className="text-black hover:text-black"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleEdit(corporate)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-black hover:text-black"
+                            title="Editar"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(corporate.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-black hover:text-black"
+                            title="Excluir"
                           >
                             <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleExportCorporate(corporate)}
+                            className="text-black hover:text-black"
+                            title="Exportar PDF"
+                          >
+                            <FileText className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
@@ -316,7 +372,7 @@ export const CorporateModule: React.FC = () => {
       {activeTab === 'register' && (
         <div className="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-            <Plus className="h-6 w-6 mr-3 text-blue-600" />
+            <Plus className="h-5 w-5 text-black mr-2" />
             {editingCorporate ? 'Editar Vínculo Empresarial' : 'Cadastrar Novo Vínculo Empresarial'}
           </h2>
 
@@ -325,32 +381,22 @@ export const CorporateModule: React.FC = () => {
               <p className="text-gray-600">Preencha os dados para {editingCorporate ? 'atualizar o' : 'registrar um novo'} vínculo empresarial.</p>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
+              <button className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+                style={{ backgroundColor: '#181a1b' }}>
                 <Upload className="h-4 w-4 mr-2" />
-                {uploading ? 'Enviando...' : 'Upload Excel'}
+                Upload Excel
               </button>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                ref={fileInputRef}
-                onChange={handleExcelUpload}
-                className="hidden"
-              />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+              <a
+                href="/modelos/Modelo_Empresarial.xlsx"
+                download
+                className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+                style={{ backgroundColor: '#181a1b' }}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Baixar Modelo
-              </button>
+              </a>
             </div>
           </div>
-
-          {uploadResult && (
-            <div className={`mt-2 text-sm ${uploadResult.includes('sucesso') ? 'text-green-600' : 'text-red-600'}`}>{uploadResult}</div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -438,11 +484,10 @@ export const CorporateModule: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data de Início *
+                  Data de Início
                 </label>
                 <input
                   type="date"
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={formData.startDate}
                   max={new Date().toISOString().split('T')[0]}
@@ -503,75 +548,28 @@ export const CorporateModule: React.FC = () => {
                   ))}
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações
-              </label>
-              <textarea
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Observações sobre o vínculo empresarial..."
-              />
-            </div>
-
-            {/* Campo para Anexar Documentos */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Anexar Documentos
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
-                  className="hidden"
-                  id="document-upload-corporate"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      documents: [...prev.documents, ...convertFilesToAttachments(files)]
-                    }));
-                  }}
-                />
-                <label htmlFor="document-upload-corporate" className="cursor-pointer">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Clique para anexar documentos ou arraste arquivos aqui
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PDF, DOC, DOCX, JPG, PNG, XLSX (máx. 10MB cada)
-                  </p>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Observações
                 </label>
+                <textarea
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Insira informações adicionais, se necessário."
+                />
               </div>
-              {formData.documents.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Documentos anexados:</h4>
-                  <div className="space-y-2">
-                    {formData.documents.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm text-gray-600">{doc.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              documents: prev.documents.filter((_, i) => i !== index)
-                            }));
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              
+              {/* Campo de Anexos */}
+              <div className="md:col-span-2">
+                <FileUpload
+                  documents={formData.documents}
+                  onDocumentsChange={(documents) => setFormData(prev => ({ ...prev, documents }))}
+                  label="Anexos"
+                />
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -600,7 +598,8 @@ export const CorporateModule: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                style={{ backgroundColor: '#181a1b' }}
               >
                 {editingCorporate ? 'Atualizar' : 'Cadastrar'}
               </button>

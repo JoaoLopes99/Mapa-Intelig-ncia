@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Plus, Search, Download, Upload, Edit2, Trash2, Eye } from 'lucide-react';
+import { Building, Plus, Search, Download, Upload, Edit2, Trash2, Eye, MapPin, FileText } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { CNPJ, FileAttachment } from '../../types';
-import { downloadModel, MODEL_FILES } from '../../utils/downloadUtils';
-import axios from 'axios';
+import { CNPJ } from '../../types';
+import { FileUpload } from '../FileUpload';
+import jsPDF from 'jspdf';
+// @ts-ignore
+import autoTable from 'jspdf-autotable';
+import { createProfessionalPDF, formatArray } from '../../utils/pdfUtils';
 
 type TabType = 'consult' | 'register';
 
@@ -13,32 +16,30 @@ export const CNPJModule: React.FC = () => {
   const [editingCnpj, setEditingCnpj] = useState<CNPJ | null>(null);
   const [selectedCnpj, setSelectedCnpj] = useState<CNPJ | null>(null);
   
-  const { cnpjs, addCnpj, updateCnpj, deleteCnpj, fetchCnpjs } = useDataStore();
-  const { cpfs, fetchCpfs } = useDataStore();
+  const { cnpjs, cpfs, addCnpj, updateCnpj, deleteCnpj, fetchCnpjs, loading } = useDataStore();
 
-  // Carregar dados quando o componente for montado
+  // Carregar CNPJs quando o componente for montado
   useEffect(() => {
+    console.log('CNPJModule: Carregando CNPJs...');
     fetchCnpjs();
-    fetchCpfs();
-  }, [fetchCnpjs, fetchCpfs]);
+  }, [fetchCnpjs]);
 
-  // Função para baixar o modelo CNPJ
-  const handleDownloadModel = () => {
-    downloadModel(MODEL_FILES.cnpj.file, MODEL_FILES.cnpj.name);
-  };
+  // Debug: Log quando cnpjs mudar
+  useEffect(() => {
+    console.log('CNPJModule: CNPJs carregados:', cnpjs.length, cnpjs);
+  }, [cnpjs]);
 
   // Form state
   const [formData, setFormData] = useState({
     cnpj: '',
     companyName: '',
     typology: '',
-    latLong: '',
     latitude: 0,
     longitude: 0,
     primaryLinkCpf: '',
     primaryLinkName: '',
     notes: '',
-    documents: [] as FileAttachment[]
+    documents: [] as any[]
   });
 
   const filteredCnpjs = cnpjs.filter(cnpj =>
@@ -50,18 +51,10 @@ export const CNPJModule: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let lat = 0;
-    let lng = 0;
-    if (formData.latLong) {
-      const coords = formData.latLong.split(',').map(coord => parseFloat(coord.trim()));
-      lat = coords[0] || 0;
-      lng = coords[1] || 0;
-    }
-    
     const cnpjData = {
       ...formData,
-      latitude: lat,
-      longitude: lng,
+      latitude: formData.latitude,
+      longitude: formData.longitude,
     };
 
     if (editingCnpj) {
@@ -76,7 +69,6 @@ export const CNPJModule: React.FC = () => {
       cnpj: '',
       companyName: '',
       typology: '',
-      latLong: '',
       latitude: 0,
       longitude: 0,
       primaryLinkCpf: '',
@@ -92,7 +84,6 @@ export const CNPJModule: React.FC = () => {
       cnpj: cnpj.cnpj,
       companyName: cnpj.companyName,
       typology: cnpj.typology,
-      latLong: `${cnpj.latitude}, ${cnpj.longitude}`,
       latitude: cnpj.latitude,
       longitude: cnpj.longitude,
       primaryLinkCpf: cnpj.primaryLinkCpf || '',
@@ -120,43 +111,87 @@ export const CNPJModule: React.FC = () => {
       .replace(/(-\d{2})\d+?$/, '$1');
   };
 
-  const handleLatLongChange = (value: string) => {
-    setFormData(prev => {
-      const [lat, lng] = value.split(',').map(coord => parseFloat(coord.trim()));
-      return {
-        ...prev,
-        latLong: value,
-        latitude: lat || 0,
-        longitude: lng || 0
-      };
-    });
+  const handleLatitudeChange = (value: string) => {
+    const lat = parseFloat(value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      latitude: lat
+    }));
   };
 
-  // Estado para feedback do upload
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const handleLongitudeChange = (value: string) => {
+    const lng = parseFloat(value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      longitude: lng
+    }));
+  };
 
-  // Função para upload de Excel
-  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadResult(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await axios.post('http://192.168.1.12:80/api/upload/cnpj', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setUploadResult(response.data.message || 'Upload realizado com sucesso!');
-      fetchCnpjs(); // Atualiza a lista após upload
-    } catch (error: any) {
-      setUploadResult(error.response?.data?.error || 'Erro ao importar arquivo.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  // Função para exportar PDF
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Lista de CNPJs', 14, 16);
+    autoTable(doc, {
+      startY: 22,
+      head: [[
+        'CNPJ',
+        'Nome da Empresa',
+        'Tipologia',
+        'Vínculo Primário',
+        'Criado por'
+      ]],
+      body: filteredCnpjs.map(cnpj => [
+        cnpj.cnpj,
+        cnpj.companyName,
+        cnpj.typology,
+        cnpj.primaryLinkName || 'N/A',
+        cnpj.createdBy || 'N/A'
+      ]),
+    });
+    doc.save('cnpjs.pdf');
+  };
+
+  // Função para exportar PDF individual de um CNPJ
+  const handleExportCNPJ = (cnpj: CNPJ) => {
+    const doc = new jsPDF();
+    
+    const sections = [
+      {
+        title: 'INFORMAÇÕES EMPRESARIAIS',
+        content: [
+          { label: 'CNPJ', value: cnpj.cnpj || 'Não informado' },
+          { label: 'Razão Social', value: cnpj.companyName || 'Não informado' },
+          { label: 'Tipologia', value: cnpj.typology || 'Não informado' }
+        ]
+      },
+      {
+        title: 'LOCALIZAÇÃO',
+        content: [
+          { label: 'Latitude', value: cnpj.latitude ? cnpj.latitude.toString() : 'Não informado' },
+          { label: 'Longitude', value: cnpj.longitude ? cnpj.longitude.toString() : 'Não informado' }
+        ]
+      },
+      {
+        title: 'VÍNCULOS',
+        content: [
+          { label: 'Vínculo Primário', value: cnpj.primaryLinkName || 'Não informado' },
+          { label: 'CPF do Vínculo', value: cnpj.primaryLinkCpf || 'Não informado' }
+        ]
+      },
+      {
+        title: 'OBSERVAÇÕES',
+        content: [
+          { label: 'Observações', value: cnpj.notes || 'Nenhuma observação registrada' }
+        ]
+      }
+    ];
+    
+    createProfessionalPDF(doc, 'CNPJ', sections, {
+      createdBy: cnpj.createdBy || 'Sistema',
+      identifier: cnpj.cnpj || 'cadastro'
+    });
+    
+    doc.save(`cnpj-${cnpj.cnpj || 'cadastro'}.pdf`);
   };
 
   return (
@@ -164,7 +199,7 @@ export const CNPJModule: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <Building className="h-8 w-8 mr-3 text-blue-600" />
+          <Building className="h-8 w-8 text-black mr-3" />
           Gerenciamento de CNPJ
         </h1>
         <p className="text-gray-600 mt-2">Cadastro e consulta de pessoas jurídicas</p>
@@ -174,19 +209,20 @@ export const CNPJModule: React.FC = () => {
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'consult', label: 'Consultar CNPJs', icon: Search },
-            { id: 'register', label: 'Novo CNPJ', icon: Plus },
+            { id: 'consult', label: 'Consultar CNPJ', icon: Search },
+            { id: 'register', label: 'Cadastrar CNPJ', icon: Plus },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`py-3 px-4 border-b-2 font-medium text-sm flex items-center rounded-t-lg transition-all duration-200 ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center rounded-t-md transition-colors duration-150 ${
                 activeTab === tab.id
-                  ? 'border-gray-400 bg-gray-300 text-gray-900 shadow-sm'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'bg-neutral-200 text-white border-transparent'
+                  : 'bg-transparent text-black border-transparent hover:bg-neutral-100'
               }`}
+              style={activeTab === tab.id ? { backgroundColor: '#d4d4d4', color: '#000' } : { color: '#000' }}
             >
-              <tab.icon className="h-4 w-4 mr-2" />
+              <tab.icon className={`h-4 w-4 mr-2 ${activeTab === tab.id ? 'text-black' : 'text-black'}`} />
               {tab.label}
             </button>
           ))}
@@ -211,7 +247,11 @@ export const CNPJModule: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center">
+              <button 
+                className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+                style={{ backgroundColor: '#181a1b' }}
+                onClick={handleExportPDF}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Exportar PDF
               </button>
@@ -245,47 +285,85 @@ export const CNPJModule: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCnpjs.map((cnpj) => (
-                    <tr key={cnpj.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {cnpj.cnpj}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {cnpj.companyName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {cnpj.typology}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cnpj.primaryLinkName || 'Sem vínculo'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cnpj.createdBy || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => setSelectedCnpj(cnpj)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(cnpj)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cnpj.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                  {loading.cnpjs ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+                          <p className="text-lg font-medium">Carregando CNPJs...</p>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : filteredCnpjs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                        {cnpjs.length === 0 ? (
+                          <div className="flex flex-col items-center">
+                            <Building className="h-12 w-12 text-gray-300 mb-4" />
+                            <p className="text-lg font-medium">Nenhum CNPJ cadastrado</p>
+                            <p className="text-sm">Clique em "Cadastrar CNPJ" para adicionar o primeiro registro.</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Search className="h-12 w-12 text-gray-300 mb-4" />
+                            <p className="text-lg font-medium">Nenhum CNPJ encontrado</p>
+                            <p className="text-sm">Tente ajustar os termos de busca.</p>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCnpjs.map((cnpj) => (
+                      <tr key={cnpj.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {cnpj.cnpj}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {cnpj.companyName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {cnpj.typology}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {cnpj.primaryLinkName || 'Sem vínculo'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {cnpj.createdBy || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => setSelectedCnpj(cnpj)}
+                            className="text-black hover:text-black"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(cnpj)}
+                            className="text-black hover:text-black"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(cnpj.id)}
+                            className="text-black hover:text-black"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleExportCNPJ(cnpj)}
+                            className="text-black hover:text-black"
+                            title="Exportar PDF"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -296,35 +374,26 @@ export const CNPJModule: React.FC = () => {
       {activeTab === 'register' && (
         <div className="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
-            <Plus className="h-6 w-6 mr-3 text-blue-600" />
+            <Plus className="h-5 w-5 text-black mr-2" />
             {editingCnpj ? 'Editar CNPJ' : 'Cadastrar Novo CNPJ'}
           </h2>
           <p className="text-gray-600 mb-6 ml-9">Preencha os dados para criar ou editar um CNPJ.</p>
           
           <div className="flex justify-end gap-2 mb-6 -mt-16">
-            <button
-              type="button"
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
+            <button className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+              style={{ backgroundColor: '#181a1b' }}>
               <Upload className="h-4 w-4 mr-2" />
-              {uploading ? 'Enviando...' : 'Upload Excel'}
+              Upload Excel
             </button>
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              ref={fileInputRef}
-              onChange={handleExcelUpload}
-              className="hidden"
-            />
-            <button 
-              onClick={handleDownloadModel}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            <a
+              href="/modelos/Modelo_CNPJ.xlsx"
+              download
+              className="text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center"
+              style={{ backgroundColor: '#181a1b' }}
             >
               <Download className="h-4 w-4 mr-2" />
               Baixar Modelo
-            </button>
+            </a>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -377,27 +446,14 @@ export const CNPJModule: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  LAT/LONG
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.latLong}
-                  onChange={(e) => handleLatLongChange(e.target.value)}
-                  placeholder="-23.5505, -46.6333"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Latitude
                 </label>
                 <input
                   type="number"
                   step="any"
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  value={formData.latitude || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.latitude.toString()}
+                  onChange={(e) => handleLatitudeChange(e.target.value)}
                 />
               </div>
 
@@ -408,9 +464,9 @@ export const CNPJModule: React.FC = () => {
                 <input
                   type="number"
                   step="any"
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  value={formData.longitude || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.longitude.toString()}
+                  onChange={(e) => handleLongitudeChange(e.target.value)}
                 />
               </div>
 
@@ -450,85 +506,28 @@ export const CNPJModule: React.FC = () => {
                   value={formData.primaryLinkName}
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações
-              </label>
-              <textarea
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Observações sobre a empresa..."
-              />
-            </div>
-
-            {/* Campo para Anexar Documentos */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Anexar Documentos
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
-                  className="hidden"
-                  id="document-upload-cnpj"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      documents: [
-                        ...prev.documents, 
-                        ...files.map(f => ({
-                          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                          name: f.name,
-                          type: f.type,
-                          size: f.size,
-                          url: URL.createObjectURL(f),
-                          uploadedAt: new Date().toISOString()
-                        } as FileAttachment))
-                      ]
-                    }));
-                  }}
-                />
-                <label htmlFor="document-upload-cnpj" className="cursor-pointer">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Clique para anexar documentos ou arraste arquivos aqui
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PDF, DOC, DOCX, JPG, PNG, XLSX (máx. 10MB cada)
-                  </p>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Observações
                 </label>
+                <textarea
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Insira informações adicionais, se necessário."
+                />
               </div>
-              {formData.documents.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Documentos anexados:</h4>
-                  <div className="space-y-2">
-                    {formData.documents.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm text-gray-600">{doc.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              documents: prev.documents.filter((_, i) => i !== index)
-                            }));
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              
+              {/* Campo de Anexos */}
+              <div className="md:col-span-2">
+                <FileUpload
+                  documents={formData.documents}
+                  onDocumentsChange={(documents) => setFormData(prev => ({ ...prev, documents }))}
+                  label="Anexos"
+                />
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -540,7 +539,6 @@ export const CNPJModule: React.FC = () => {
                     cnpj: '',
                     companyName: '',
                     typology: '',
-                    latLong: '',
                     latitude: 0,
                     longitude: 0,
                     primaryLinkCpf: '',
@@ -557,7 +555,8 @@ export const CNPJModule: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                style={{ backgroundColor: '#181a1b' }}
               >
                 {editingCnpj ? 'Atualizar' : 'Cadastrar'}
               </button>
@@ -629,10 +628,6 @@ export const CNPJModule: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {uploadResult && (
-        <div className={`mt-2 text-sm ${uploadResult.includes('sucesso') ? 'text-green-600' : 'text-red-600'}`}>{uploadResult}</div>
       )}
     </div>
   );

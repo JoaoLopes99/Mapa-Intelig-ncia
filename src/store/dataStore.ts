@@ -94,13 +94,15 @@ interface DataState {
   
   // Dashboard stats
   getDashboardStats: () => DashboardStats;
+  getDashboardStatsByDate: (startDate: string, endDate: string) => DashboardStats;
+  getDashboardStatsByName: (occurrenceName: string) => DashboardStats;
 
   // Bulk actions
   fetchAllData: () => Promise<void>;
   clearAllData: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:80/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 export const useDataStore = create<DataState>((set, get) => ({
   // Estado inicial
@@ -227,14 +229,34 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   updateCpf: async (id, cpfData) => {
     try {
-      await fetch(`${API_BASE_URL}/cpfs/${id}`, {
+      console.log('--- CPF UPDATE STORE HIT ---');
+      console.log('ID:', id);
+      console.log('Data:', cpfData);
+      console.log('--------------------------');
+      
+      const response = await fetch(`${API_BASE_URL}/cpfs/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cpfData),
       });
-      set(state => ({
-        cpfs: state.cpfs.map(cpf => cpf.id === id ? { ...cpf, ...cpfData } : cpf)
-      }));
+      
+      if (response.ok) {
+        const updatedCpf = await response.json();
+        console.log('Updated CPF from server:', updatedCpf);
+        
+        set(state => ({
+          cpfs: state.cpfs.map(cpf => 
+            cpf.id === id ? { ...cpf, ...updatedCpf } : cpf
+          )
+        }));
+        
+        // Refresh the CPFs list to ensure consistency
+        get().fetchCpfs();
+      } else {
+        console.error('Falha ao atualizar CPF:', response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      }
     } catch (error) {
       console.error('Erro ao atualizar CPF:', error);
     }
@@ -265,6 +287,10 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   addCnpj: async (cnpjData) => {
     try {
+      console.log('--- CNPJ ADD STORE HIT ---');
+      console.log('CNPJ data:', cnpjData);
+      console.log('--------------------------');
+      
       const user = useAuthStore.getState().user;
       const dataWithUser = {
         ...cnpjData,
@@ -277,9 +303,13 @@ export const useDataStore = create<DataState>((set, get) => ({
         body: JSON.stringify(dataWithUser),
       });
       if (response.ok) {
+        const createdCnpj = await response.json();
+        console.log('CNPJ created successfully:', createdCnpj);
         get().fetchCnpjs();
       } else {
         console.error('Falha ao adicionar CNPJ:', response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
       }
     } catch (error) {
       console.error('Erro ao adicionar CNPJ:', error);
@@ -288,14 +318,34 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   updateCnpj: async (id, cnpjData) => {
     try {
-      await fetch(`${API_BASE_URL}/cnpjs/${id}`, {
+      console.log('--- CNPJ UPDATE STORE HIT ---');
+      console.log('ID:', id);
+      console.log('Data:', cnpjData);
+      console.log('--------------------------');
+      
+      const response = await fetch(`${API_BASE_URL}/cnpjs/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cnpjData),
       });
-      set(state => ({
-        cnpjs: state.cnpjs.map(cnpj => cnpj.id === id ? { ...cnpj, ...cnpjData } : cnpj)
-      }));
+      
+      if (response.ok) {
+        const updatedCnpj = await response.json();
+        console.log('Updated CNPJ from server:', updatedCnpj);
+        
+        set(state => ({
+          cnpjs: state.cnpjs.map(cnpj => 
+            cnpj.id === id ? { ...cnpj, ...updatedCnpj } : cnpj
+          )
+        }));
+        
+        // Refresh the CNPJs list to ensure consistency
+        get().fetchCnpjs();
+      } else {
+        console.error('Falha ao atualizar CNPJ:', response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      }
     } catch (error) {
       console.error('Erro ao atualizar CNPJ:', error);
     }
@@ -303,8 +353,20 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   deleteCnpj: async (id) => {
     try {
-      await fetch(`${API_BASE_URL}/cnpjs/${id}`, { method: 'DELETE' });
-      set(state => ({ cnpjs: state.cnpjs.filter(cnpj => cnpj.id !== id) }));
+      console.log('--- CNPJ DELETE STORE HIT ---');
+      console.log('ID:', id);
+      console.log('--------------------------');
+      
+      const response = await fetch(`${API_BASE_URL}/cnpjs/${id}`, { method: 'DELETE' });
+      
+      if (response.ok) {
+        set(state => ({ cnpjs: state.cnpjs.filter(cnpj => cnpj.id !== id) }));
+        console.log('CNPJ deleted successfully');
+      } else {
+        console.error('Falha ao deletar CNPJ:', response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      }
     } catch (error) {
       console.error('Erro ao deletar CNPJ:', error);
     }
@@ -744,6 +806,149 @@ export const useDataStore = create<DataState>((set, get) => ({
       activeCases: occurrences.filter(o => o.status === 'Em andamento').length,
       totalCpfs: cpfs.length,
       totalConnections: cpfs.filter(c => (c as any).primaryLinkCpf).length, // Exemplo
+      occurrencesByType: Object.entries(occurrencesByType).map(([type, count]) => ({ type, count })),
+      occurrencesBySeverity: Object.entries(occurrencesBySeverity).map(([severity, count]) => ({ severity, count })),
+      occurrencesByUnit: Object.entries(occurrencesByUnit).map(([unit, count]) => ({ unit, count })),
+      occurrencesByResponsible: Object.entries(occurrencesByResponsible).map(([responsible, count]) => ({ responsible, count })),
+    };
+  },
+
+  getDashboardStatsByDate: (startDate: string, endDate: string) => {
+    const { occurrences, cpfs, cnpjs, properties, vehicles, phones } = get();
+
+    if (!occurrences || occurrences.length === 0) {
+      return {
+        totalOccurrences: 0,
+        activeCases: 0,
+        totalCpfs: 0,
+        totalConnections: 0,
+        occurrencesByType: [],
+        occurrencesBySeverity: [],
+        occurrencesByUnit: [],
+        occurrencesByResponsible: [],
+      };
+    }
+
+    // Filtrar ocorrências por data
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Incluir o dia inteiro
+
+    const filteredOccurrences = occurrences.filter(occurrence => {
+      const occurrenceDate = new Date(occurrence.startDate);
+      return occurrenceDate >= start && occurrenceDate <= end;
+    });
+
+    if (filteredOccurrences.length === 0) {
+      return {
+        totalOccurrences: 0,
+        activeCases: 0,
+        totalCpfs: cpfs.length,
+        totalConnections: cpfs.filter(c => (c as any).primaryLinkCpf).length,
+        occurrencesByType: [],
+        occurrencesBySeverity: [],
+        occurrencesByUnit: [],
+        occurrencesByResponsible: [],
+      };
+    }
+
+    const occurrencesByType = filteredOccurrences.reduce((acc, o) => {
+      const type = o.type || 'Não especificado';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const occurrencesBySeverity = filteredOccurrences.reduce((acc, o) => {
+      const severity = o.severity || 'Não especificado';
+      acc[severity] = (acc[severity] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const occurrencesByUnit = filteredOccurrences.reduce((acc, o) => {
+      const unit = o.unit || 'Não especificado';
+      acc[unit] = (acc[unit] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const occurrencesByResponsible = filteredOccurrences.reduce((acc, o) => {
+      const responsible = o.responsible || 'Não especificado';
+      acc[responsible] = (acc[responsible] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalOccurrences: filteredOccurrences.length,
+      activeCases: filteredOccurrences.filter(o => o.status === 'Em andamento').length,
+      totalCpfs: cpfs.length,
+      totalConnections: cpfs.filter(c => (c as any).primaryLinkCpf).length,
+      occurrencesByType: Object.entries(occurrencesByType).map(([type, count]) => ({ type, count })),
+      occurrencesBySeverity: Object.entries(occurrencesBySeverity).map(([severity, count]) => ({ severity, count })),
+      occurrencesByUnit: Object.entries(occurrencesByUnit).map(([unit, count]) => ({ unit, count })),
+      occurrencesByResponsible: Object.entries(occurrencesByResponsible).map(([responsible, count]) => ({ responsible, count })),
+    };
+  },
+
+  getDashboardStatsByName: (occurrenceName: string) => {
+    const { occurrences } = get();
+
+    if (!occurrences || occurrences.length === 0) {
+      return {
+        totalOccurrences: 0,
+        activeCases: 0,
+        totalCpfs: 0,
+        totalConnections: 0,
+        occurrencesByType: [],
+        occurrencesBySeverity: [],
+        occurrencesByUnit: [],
+        occurrencesByResponsible: [],
+      };
+    }
+
+    const search = occurrenceName.trim().toLowerCase();
+    const filteredOccurrences = occurrences.filter(o => o.name && o.name.toLowerCase().includes(search));
+
+    if (filteredOccurrences.length === 0) {
+      return {
+        totalOccurrences: 0,
+        activeCases: 0,
+        totalCpfs: 0,
+        totalConnections: 0,
+        occurrencesByType: [],
+        occurrencesBySeverity: [],
+        occurrencesByUnit: [],
+        occurrencesByResponsible: [],
+      };
+    }
+
+    const occurrencesByType = filteredOccurrences.reduce((acc, o) => {
+      const type = o.type || 'Não especificado';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const occurrencesBySeverity = filteredOccurrences.reduce((acc, o) => {
+      const severity = o.severity || 'Não especificado';
+      acc[severity] = (acc[severity] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const occurrencesByUnit = filteredOccurrences.reduce((acc, o) => {
+      const unit = o.unit || 'Não especificado';
+      acc[unit] = (acc[unit] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const occurrencesByResponsible = filteredOccurrences.reduce((acc, o) => {
+      const responsible = o.responsible || 'Não especificado';
+      acc[responsible] = (acc[responsible] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalOccurrences: filteredOccurrences.length,
+      activeCases: filteredOccurrences.filter(o => o.status === 'Em andamento').length,
+      totalCpfs: 0, // Assuming totalCpfs is not available in the filtered data
+      totalConnections: 0, // Assuming totalConnections is not available in the filtered data
       occurrencesByType: Object.entries(occurrencesByType).map(([type, count]) => ({ type, count })),
       occurrencesBySeverity: Object.entries(occurrencesBySeverity).map(([severity, count]) => ({ severity, count })),
       occurrencesByUnit: Object.entries(occurrencesByUnit).map(([unit, count]) => ({ unit, count })),

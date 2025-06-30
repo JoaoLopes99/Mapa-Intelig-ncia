@@ -463,7 +463,7 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
             padding: '10px 20px', 
             borderRadius: '5px', 
             border: 'none', 
-            backgroundColor: '#3B82F6', 
+            backgroundColor: '#181a1b', 
             color: 'white', 
             cursor: 'pointer',
             fontWeight: '500'
@@ -928,7 +928,7 @@ const CriminalBoard: React.FC = () => {
           disabled={isSearching || !searchCpf.trim()}
           style={{
             padding: '8px 16px',
-            backgroundColor: isSearching || !searchCpf.trim() ? '#9CA3AF' : '#3B82F6',
+            backgroundColor: isSearching || !searchCpf.trim() ? '#9CA3AF' : '#181a1b',
             color: 'white',
             border: 'none',
             borderRadius: '6px',
@@ -968,7 +968,7 @@ const CriminalBoard: React.FC = () => {
             onClick={handleClearSearch}
             style={{
               padding: '8px 12px',
-              backgroundColor: '#EF4444',
+              backgroundColor: '#181a1b',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
@@ -1006,7 +1006,7 @@ const CriminalBoard: React.FC = () => {
           style={{
             width: '40px',
             height: '40px',
-            backgroundColor: '#3B82F6',
+            backgroundColor: '#181a1b',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -1024,7 +1024,7 @@ const CriminalBoard: React.FC = () => {
           style={{
             width: '40px',
             height: '40px',
-            backgroundColor: '#3B82F6',
+            backgroundColor: '#181a1b',
             color: 'white',
             border: 'none',
             borderRadius: '8px',

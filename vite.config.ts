@@ -1,10 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import logoRaizen from '../assets/logo-raizen.png';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), basicSsl()],
+  server: {
+    https: true,
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

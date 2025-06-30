@@ -7,6 +7,7 @@ export interface User {
 
 export interface Occurrence {
   id: string;
+  name: string;
   type: string;
   communicationType: string;
   involved: string[];

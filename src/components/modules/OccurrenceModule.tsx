@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Plus, Search, Download, Upload, Edit2, Trash2, Eye, FileText } from 'lucide-react';
+import Select from 'react-select';
 import { useDataStore } from '../../store/dataStore';
-import { Occurrence } from '../../types';
+import { Occurrence, CPF } from '../../types';
 import { UNITS } from '../../utils/constants';
 import { FileUpload } from '../FileUpload';
 import jsPDF from 'jspdf';
@@ -36,7 +37,9 @@ export const OccurrenceModule: React.FC = () => {
     status: 'Em andamento' as 'Em andamento' | 'Finalizada',
     observations: '',
     finalConsiderations: '',
-    documents: [] as any[]
+    relatedCpfs: [] as string[],
+    documents: [] as any[],
+    investigationType: '' as 'SIGS' | 'SIDEF' | 'SITEC' | 'SIMAUT' | ''
   });
 
   // Carregar dados quando o componente for montado
@@ -97,7 +100,9 @@ export const OccurrenceModule: React.FC = () => {
       status: 'Em andamento',
       observations: '',
       finalConsiderations: '',
-      documents: []
+      relatedCpfs: [],
+      documents: [],
+      investigationType: ''
     });
     setActiveTab('consult');
   };
@@ -119,7 +124,9 @@ export const OccurrenceModule: React.FC = () => {
       status: occurrence.status,
       observations: occurrence.observations,
       finalConsiderations: occurrence.finalConsiderations || '',
-      documents: occurrence.documents
+      relatedCpfs: occurrence.relatedCpfs || [],
+      documents: occurrence.documents,
+      investigationType: occurrence.investigationType || ''
     });
     setEditingOccurrence(occurrence);
     setActiveTab('register');
@@ -621,6 +628,23 @@ export const OccurrenceModule: React.FC = () => {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categoria
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.investigationType || ''}
+                  onChange={e => setFormData(prev => ({ ...prev, investigationType: e.target.value }))}
+                >
+                  <option value="">Selecione...</option>
+                  <option value="SIGS">SIGS</option>
+                  <option value="SIDEF">SIDEF</option>
+                  <option value="SITEC">SITEC</option>
+                  <option value="SIMAUT">SIMAUT</option>
+                </select>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Observações
@@ -633,9 +657,107 @@ export const OccurrenceModule: React.FC = () => {
                   placeholder="Insira informações adicionais, se necessário."
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CPFs Relacionados
+                </label>
+                <div className="space-y-2">
+                  {formData.relatedCpfs.map((cpf, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <div className="flex-1">
+                        <Select
+                          value={cpf ? { value: cpf, label: `${cpf} - ${cpfs.find(c => c.cpf === cpf)?.name || 'CPF não encontrado'}` } : null}
+                          onChange={(option) => {
+                            const newCpfs = [...formData.relatedCpfs];
+                            newCpfs[index] = option ? option.value : '';
+                            setFormData(prev => ({ ...prev, relatedCpfs: newCpfs }));
+                          }}
+                          options={cpfs
+                            .filter(cpfData => !formData.relatedCpfs.includes(cpfData.cpf) || cpfData.cpf === cpf)
+                            .map(cpfData => ({
+                              value: cpfData.cpf,
+                              label: `${cpfData.cpf} - ${cpfData.name}`
+                            }))}
+                          placeholder="Selecione um CPF..."
+                          isClearable
+                          isSearchable
+                          noOptionsMessage={() => "Nenhum CPF disponível"}
+                          className="text-sm"
+                          styles={{
+                            control: (provided) => ({
+                              ...provided,
+                              borderColor: '#d1d5db',
+                              borderRadius: '0.5rem',
+                              minHeight: '42px',
+                              '&:hover': {
+                                borderColor: '#9ca3af'
+                              }
+                            }),
+                            option: (provided, state) => ({
+                              ...provided,
+                              backgroundColor: state.isSelected ? '#181a1b' : state.isFocused ? '#f3f4f6' : 'white',
+                              color: state.isSelected ? 'white' : '#374151',
+                              '&:hover': {
+                                backgroundColor: state.isSelected ? '#181a1b' : '#f3f4f6'
+                              }
+                            }),
+                            menu: (provided) => ({
+                              ...provided,
+                              zIndex: 9999
+                            })
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCpfs = formData.relatedCpfs.filter((_, i) => i !== index);
+                          setFormData(prev => ({ ...prev, relatedCpfs: newCpfs }));
+                        }}
+                        className="px-3 py-2 text-red-600 hover:text-red-800 transition-colors"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        relatedCpfs: [...prev.relatedCpfs, ''] 
+                      }));
+                    }}
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
+                  >
+                    + Adicionar CPF
+                  </button>
+                </div>
+              </div>
               
               {/* Campo de Anexos */}
               <div className="md:col-span-2">
+                {formData.documents && formData.documents.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="font-semibold mb-2">Documentos Anexados</h4>
+                    <ul className="list-disc pl-5">
+                      {formData.documents.map((doc: any, idx: any) => (
+                        <li key={idx}>
+                          <a
+                            href={doc.url || doc.path || doc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline"
+                            download
+                          >
+                            {doc.name || `Documento ${idx + 1}`}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <FileUpload
                   documents={formData.documents}
                   onDocumentsChange={(documents) => setFormData(prev => ({ ...prev, documents }))}
@@ -678,7 +800,9 @@ export const OccurrenceModule: React.FC = () => {
                     status: 'Em andamento',
                     observations: '',
                     finalConsiderations: '',
-                    documents: []
+                    relatedCpfs: [],
+                    documents: [],
+                    investigationType: ''
                   });
                   setEditingOccurrence(null);
                   setActiveTab('consult');
@@ -757,6 +881,43 @@ export const OccurrenceModule: React.FC = () => {
                   <div>
                     <span className="font-medium text-gray-700">Considerações Finais:</span>
                     <p className="text-gray-900 mt-1">{selectedOccurrence.finalConsiderations}</p>
+                  </div>
+                )}
+
+                {selectedOccurrence.relatedCpfs && selectedOccurrence.relatedCpfs.length > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-700">CPFs Relacionados:</span>
+                    <div className="mt-1 space-y-1">
+                      {selectedOccurrence.relatedCpfs.map((cpf, index) => {
+                        const cpfData = cpfs.find(c => c.cpf === cpf);
+                        return (
+                          <p key={index} className="text-gray-900 bg-gray-50 px-2 py-1 rounded">
+                            {cpf} - {cpfData ? cpfData.name : 'CPF não encontrado'}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {selectedOccurrence && selectedOccurrence.documents && selectedOccurrence.documents.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-semibold mb-2">Documentos Anexados</h4>
+                    <ul className="list-disc pl-5">
+                      {selectedOccurrence.documents.map((doc: any, idx: any) => (
+                        <li key={idx}>
+                          <a
+                            href={doc.url || doc.path || doc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline"
+                            download
+                          >
+                            {doc.name || `Documento ${idx + 1}`}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Plus, Search, Download, Upload, Eye, Edit2, Trash2, FileImage, X, FileText } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { CPF } from '../../types';
+import { CPF, FileAttachment, Connection } from '../../types';
 import { FileUpload } from '../FileUpload';
 import jsPDF from 'jspdf';
 // @ts-ignore
@@ -28,8 +28,8 @@ export const CPFModule: React.FC = () => {
     primaryLinkName: '',
     notes: '',
     photo: '',
-    documents: [] as any[],
-    connections: [] as any[]
+    documents: [] as FileAttachment[],
+    connections: [] as Connection[]
   });
 
   // Carregar CPFs quando o componente for montado
@@ -79,8 +79,8 @@ export const CPFModule: React.FC = () => {
       primaryLinkName: '',
       notes: '',
       photo: '',
-      documents: [],
-      connections: []
+      documents: [] as FileAttachment[],
+      connections: [] as Connection[]
     });
     setActiveTab('consult');
   };
@@ -495,6 +495,26 @@ export const CPFModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                 <p className="text-sm text-gray-900 mb-4">{viewingCpf.notes || 'Sem observações'}</p>
               </div>
+              
+              {/* Anexos */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Anexos</label>
+                {viewingCpf.documents && viewingCpf.documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {viewingCpf.documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-900">{doc.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({(doc.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 mb-4">Nenhum anexo</p>
+                )}
+              </div>
             </div>
             
             <div className="flex justify-end mt-6">
@@ -654,13 +674,28 @@ export const CPFModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   CPF do Vínculo Primário
                 </label>
-                <input
-                  type="text"
+                <select
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={formData.primaryLinkCpf}
-                  onChange={(e) => setFormData(prev => ({ ...prev, primaryLinkCpf: formatCpf(e.target.value) }))}
-                  placeholder="CPF do principal contato"
-                />
+                  onChange={(e) => {
+                    const selectedCpf = e.target.value;
+                    const selectedCpfData = cpfs.find(cpf => cpf.cpf === selectedCpf);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      primaryLinkCpf: selectedCpf,
+                      primaryLinkName: selectedCpfData ? selectedCpfData.name : ''
+                    }));
+                  }}
+                >
+                  <option value="">Selecione um CPF</option>
+                  {cpfs
+                    .filter(cpf => cpf.cpf !== formData.cpf) // Exclui o próprio CPF da lista
+                    .map((cpf) => (
+                      <option key={cpf.id} value={cpf.cpf}>
+                        {`${cpf.name} (${cpf.cpf})`}
+                      </option>
+                    ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

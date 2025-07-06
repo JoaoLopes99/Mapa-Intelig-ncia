@@ -261,6 +261,7 @@ async function createAllTables() {
         status TEXT,
         observations TEXT,
         finalConsiderations TEXT,
+        relatedCpfs TEXT,
         documents TEXT,
         createdBy TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,

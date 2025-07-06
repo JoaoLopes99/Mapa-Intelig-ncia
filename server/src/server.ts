@@ -14,22 +14,25 @@ import uploadRouter from './routes/upload';
 import path from 'path';
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Super-Logger Middleware - A PRIMEIRA COISA QUE O APP USA
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log('--- REQUEST RECEIVED BY SPY ---');
-  console.log(`Timestamp: ${new Date().toISOString()}`);
-  console.log(`Method: ${req.method}`);
-  console.log(`URL: ${req.originalUrl}`);
-  console.log('-----------------------------');
+  if (NODE_ENV === 'development') {
+    console.log('--- REQUEST RECEIVED BY SPY ---');
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log(`Method: ${req.method}`);
+    console.log(`URL: ${req.originalUrl}`);
+    console.log('-----------------------------');
+  }
   next(); // Passa a requisição para o próximo middleware (cors, etc.)
 });
 
 // Middleware
 // Configuração explícita do CORS para garantir que o frontend possa acessar a API
 app.use(cors({
-  origin: '*', // Permite todas as origens. Para produção, restrinja a domínios específicos.
+  origin: process.env.FRONTEND_URL || '*', // Permite todas as origens. Para produção, restrinja a domínios específicos.
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos HTTP permitidos
   allowedHeaders: ['Content-Type', 'Authorization'], // Cabeçalhos permitidos
 }));
@@ -50,14 +53,21 @@ app.use('/api/upload', uploadRouter);
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    environment: NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Master Error Handling Middleware - MUST be the last 'app.use()'
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error("!!! MASTER ERROR HANDLER CAUGHT AN ERROR !!!");
   console.error(`Error Message: ${err.message}`);
-  console.error(err.stack);
+  if (NODE_ENV === 'development') {
+    console.error(err.stack);
+  }
   
   if (err instanceof SyntaxError && 'body' in err) {
     return res.status(400).json({ message: 'JSON malformado enviado pelo cliente.' });
@@ -68,7 +78,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
 });
 
 export default app; 

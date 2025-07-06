@@ -21,6 +21,7 @@ export interface Occurrence {
   status: 'Em andamento' | 'Finalizada';
   observations: string;
   finalConsiderations?: string;
+  relatedCpfs: string[]; // CPFs relacionados à ocorrência
   documents: FileAttachment[];
   createdBy: string;
   createdAt: string;

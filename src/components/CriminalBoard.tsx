@@ -11,10 +11,91 @@ interface Node {
   y: number;
   color: string;
   primaryLinkCpf?: string;
+  isExpanded?: boolean;
+  platform?: string;
 }
 
+// Componente para ícones específicos de redes sociais
+const SocialNetworkIcon: React.FC<{ platform: string; size?: number }> = ({ platform, size = 24 }) => {
+  const platformLower = platform.toLowerCase();
+  
+  const getIcon = () => {
+    switch (platformLower) {
+      case 'youtube':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+        );
+      case 'facebook':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+        );
+      case 'instagram':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.418-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.928.875 1.418 2.026 1.418 3.323s-.49 2.448-1.418 3.244c-.875.807-2.026 1.297-3.323 1.297zm7.83-9.781c-.49 0-.928-.175-1.297-.49-.368-.315-.49-.753-.49-1.243 0-.49.122-.928.49-1.243.369-.315.807-.49 1.297-.49s.928.175 1.297.49c.368.315.49.753.49 1.243 0 .49-.122.928-.49 1.243-.369.315-.807.49-1.297.49z"/>
+          </svg>
+        );
+      case 'twitter':
+      case 'x':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        );
+      case 'linkedin':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+        );
+      case 'tiktok':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+          </svg>
+        );
+      case 'whatsapp':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+          </svg>
+        );
+      case 'telegram':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+        );
+      case 'discord':
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+          </svg>
+        );
+      default:
+        // Ícone genérico para redes sociais não reconhecidas
+        return (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+        );
+    }
+  };
+  
+  return getIcon();
+};
+
 // Componente para ícones genéricos baseados no tipo
-const GenericIcon: React.FC<{ type: string; size?: number }> = ({ type, size = 24 }) => {
+const GenericIcon: React.FC<{ type: string; size?: number; platform?: string }> = ({ type, size = 24, platform }) => {
+  // Se for rede social e tiver plataforma específica, usa o ícone específico
+  if (type === 'REDE SOCIAL' && platform) {
+    return <SocialNetworkIcon platform={platform} size={size} />;
+  }
+
   const getIcon = () => {
     switch (type) {
       case 'CPF':
@@ -73,7 +154,6 @@ const GenericIcon: React.FC<{ type: string; size?: number }> = ({ type, size = 2
         );
     }
   };
-
   return getIcon();
 };
 
@@ -81,6 +161,19 @@ const GenericIcon: React.FC<{ type: string; size?: number }> = ({ type, size = 2
 const EditIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    </svg>
+  );
+
+// Componente para ícone de expandir/recolher
+const ExpandIcon: React.FC<{ isExpanded: boolean; size?: number }> = ({ isExpanded, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    {isExpanded ? (
+      // Ícone de recolher (menos)
+      <path d="M19 13H5v-2h14v2z"/>
+    ) : (
+      // Ícone de expandir (mais)
+      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    )}
   </svg>
 );
 
@@ -123,6 +216,7 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
 
       // Se o CPF vinculado é alterado, atualiza o nome vinculado automaticamente
       if (name === 'primaryLinkCpf') {
+        newValues['primaryLinkCpf'] = value;
         const selectedCpfData = allCpfs.find(cpf => cpf.cpf === value);
         newValues['primaryLinkName'] = selectedCpfData ? selectedCpfData.name : '';
       }
@@ -346,7 +440,6 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
           </>)}
           {renderSection('Vínculos', <>
             {renderCpfLinkField('CPF Principal Vinculado', 'primaryLinkCpf', formData.primaryLinkCpf || '')}
-            {renderField('Nome Principal Vinculado', 'primaryLinkName', formData.primaryLinkName || '', 'text', true)}
           </>)}
           {renderSection('Informações Adicionais', <>
             {renderTextAreaField('Observações', 'notes', formData.notes || '')}
@@ -362,7 +455,6 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
           </>)}
           {renderSection('Vínculos', <>
             {renderCpfLinkField('CPF Principal Vinculado', 'primaryLinkCpf', formData.primaryLinkCpf || '')}
-            {renderField('Nome Principal Vinculado', 'primaryLinkName', formData.primaryLinkName || '', 'text', true)}
           </>)}
           {renderSection('Informações Adicionais', <>
             {renderTextAreaField('Observações', 'notes', formData.notes || '')}
@@ -390,7 +482,6 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
           </>)}
           {renderSection('Vínculos', <>
             {renderCpfLinkField('CPF Principal Vinculado', 'primaryLinkCpf', formData.primaryLinkCpf || '')}
-            {renderField('Nome Principal Vinculado', 'primaryLinkName', formData.primaryLinkName || '', 'text', true)}
           </>)}
           {renderSection('Informações Adicionais', <>
             {renderTextAreaField('Observações', 'notes', formData.notes || '')}
@@ -441,6 +532,26 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, node, al
           maxHeight: 'calc(90vh - 120px)'
         }}>
           {renderFormFields()}
+          {formData.documents && formData.documents.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2">Documentos Anexados</h4>
+              <ul className="list-disc pl-5">
+                {formData.documents.map((doc: any, idx: any) => (
+                  <li key={idx}>
+                    <a
+                      href={doc.url || doc.path || doc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                      download
+                    >
+                      {doc.name || `Documento ${idx + 1}`}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <div style={{ 
           display: 'flex', 
@@ -484,7 +595,7 @@ const CriminalBoard: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [searchCpf, setSearchCpf] = useState('');
-  const [searchedCpf, setSearchedCpf] = useState<string | null>(null);
+  const [searchedCpfs, setSearchedCpfs] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -493,6 +604,7 @@ const CriminalBoard: React.FC = () => {
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 900 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNodeData, setEditingNodeData] = useState<EditableData | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const {
     cpfs, cnpjs, properties, vehicles, phones, socialNetworks, financials, corporates,
@@ -611,41 +723,87 @@ const CriminalBoard: React.FC = () => {
   };
 
   const handleSearch = () => {
-    console.log('🚀 BOTÃO BUSCAR CLICADO!');
-    if (!searchCpf.trim()) {
-      console.log('❌ CPF vazio, retornando');
-      return;
-    }
-    // Apenas define o CPF pesquisado. O useEffect cuidará do resto.
-    setSearchedCpf(searchCpf.trim());
-    setShowSuggestions(false); // Esconde sugestões após a busca
+    const cpf = searchCpf.trim();
+    if (!cpf) return;
+    if (searchedCpfs.includes(cpf)) return; // Não adiciona duplicado
+    setSearchedCpfs(prev => [...prev, cpf]);
+    setSearchCpf('');
+    setShowSuggestions(false);
+  };
+
+  const handleRemoveCpf = (cpf: string) => {
+    setSearchedCpfs(prev => prev.filter(c => c !== cpf));
+    setExpandedNodes(prev => {
+      // Remove expansão dos nós relacionados a esse CPF
+      const newSet = new Set([...prev]);
+      for (const id of newSet) {
+        if (id.endsWith(cpf.replace(/\D/g, ''))) {
+          newSet.delete(id);
+        }
+      }
+      return newSet;
+    });
   };
 
   const handleClearSearch = () => {
     setSearchCpf('');
-    setSearchedCpf(null);
+    setSearchedCpfs([]);
     setNodes([]);
+    setExpandedNodes(new Set());
     setShowSuggestions(false);
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.3));
 
+  // Função para expandir/recolher vínculos de um nó
+  const handleToggleExpansion = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
+
   const getConnections = () => {
     const connections: { from: Node; to: Node }[] = [];
-    
-    // Encontra o nó CPF principal (centro da rede)
-    const cpfNode = nodes.find(node => node.type === 'CPF');
-    
-    if (cpfNode) {
-      // Conecta todos os outros nós ao CPF principal
-      nodes.forEach(node => {
-        if (node.id !== cpfNode.id && node.primaryLinkCpf === cpfNode.primaryLinkCpf) {
-          connections.push({ from: cpfNode, to: node });
+
+    // Sempre desenha a linha entre o principal e os CPFs vinculados
+    nodes.forEach(node => {
+      if (
+        node.type === 'CPF' &&
+        node.primaryLinkCpf &&
+        node.primaryLinkCpf !== node.subtitle
+      ) {
+        const primaryNode = nodes.find(
+          n => n.type === 'CPF' && n.subtitle === node.primaryLinkCpf
+        );
+        if (primaryNode) {
+          connections.push({ from: primaryNode, to: node });
         }
-      });
-    }
-    
+      }
+    });
+
+    // Liga cada CPF aos seus vínculos (ícones) só se estiver expandido
+    nodes.forEach(fromNode => {
+      if (fromNode.type === 'CPF' && expandedNodes.has(fromNode.id)) {
+        nodes.forEach(toNode => {
+          if (
+            toNode.id !== fromNode.id &&
+            toNode.primaryLinkCpf === fromNode.subtitle &&
+            toNode.type !== 'CPF'
+          ) {
+            connections.push({ from: fromNode, to: toNode });
+          }
+        });
+      }
+    });
+
     return connections;
   };
 
@@ -753,58 +911,147 @@ const CriminalBoard: React.FC = () => {
   // Seleciona uma sugestão e busca
   const selectSuggestion = (suggestion: string) => {
     setSearchCpf(suggestion);
-    setSearchedCpf(suggestion.trim());
+    setSearchedCpfs(prev => [...prev, suggestion.trim()]);
     setShowSuggestions(false);
     setSuggestions([]);
     setSelectedSuggestionIndex(-1);
   };
 
+  // Função utilitária para includes seguro
+  function safeIncludes(arr: string[], value: string | undefined): boolean {
+    return !!value && arr.includes(value);
+  }
+
   // useEffect que filtra e cria os nós
   useEffect(() => {
-    console.log(`Filtrando nós com o CPF: "${searchedCpf}"`);
-
-    if (!searchedCpf) {
+    if (searchedCpfs.length === 0) {
       setNodes([]);
       return;
     }
 
-    const filteredNodes: Node[] = [];
-    const searchedCpfClean = searchedCpf.replace(/\D/g, '');
+    // Utilitário para evitar duplicidade de nós
+    const nodeMap = new Map<string, Node>();
+    const processedCpfs = new Set<string>();
+    const nodesToProcess: { cpf: string, x: number, y: number, depth: number }[] = [];
+    const centerX = 600, centerY = 400;
+    const cpfRadius = 200;
+    const linkRadius = 150;
     
-    // CPF principal
-    const matchingCpfs = cpfs.filter(cpf => cpf.cpf.replace(/\D/g, '').includes(searchedCpfClean));
-    matchingCpfs.forEach(cpf => {
-      filteredNodes.push({
-        id: `cpf-${cpf.id}`, type: 'CPF', title: cpf.name, subtitle: cpf.cpf,
-        x: 600, y: 400, color: '#3B82F6', primaryLinkCpf: cpf.cpf
+    // Mapeia posições existentes dos nós
+    const existingNodePositions: { [id: string]: { x: number; y: number } } = {};
+    nodes.forEach(node => {
+      existingNodePositions[node.id] = { x: node.x, y: node.y };
+    });
+
+    // Inicializa com os CPFs buscados
+    searchedCpfs.forEach((cpf, idx) => {
+      const cpfData = cpfs.find(c => c.cpf === cpf);
+      const cpfNodeId = cpfData ? `cpf-${cpfData.id}` : `cpf-missing-${cpf}`;
+      let x, y;
+      if (existingNodePositions[cpfNodeId]) {
+        x = existingNodePositions[cpfNodeId].x;
+        y = existingNodePositions[cpfNodeId].y;
+      } else {
+        const angle = (idx * 2 * Math.PI) / Math.max(searchedCpfs.length, 1);
+        x = centerX + cpfRadius * Math.cos(angle);
+        y = centerY + cpfRadius * Math.sin(angle);
+      }
+      nodesToProcess.push({ cpf, x, y, depth: 0 });
+    });
+
+    while (nodesToProcess.length > 0) {
+      const { cpf, x, y, depth } = nodesToProcess.shift()!;
+      if (processedCpfs.has(cpf)) continue;
+      processedCpfs.add(cpf);
+
+      // Adiciona o nó CPF (sempre azul)
+      let cpfData = cpfs.find(c => c.cpf === cpf);
+      let cpfNodeId = cpfData ? `cpf-${cpfData.id}` : `cpf-missing-${cpf}`;
+      let nodeX = x, nodeY = y;
+      if (existingNodePositions[cpfNodeId]) {
+        nodeX = existingNodePositions[cpfNodeId].x;
+        nodeY = existingNodePositions[cpfNodeId].y;
+      }
+      if (!nodeMap.has(cpfNodeId)) {
+        nodeMap.set(cpfNodeId, {
+          id: cpfNodeId,
+          type: 'CPF',
+          title: cpfData ? cpfData.name : 'CPF não encontrado',
+          subtitle: cpf,
+          x: Math.round(nodeX),
+          y: Math.round(nodeY),
+          color: '#3B82F6',
+          primaryLinkCpf: cpfData ? cpfData.primaryLinkCpf : ''
+        });
+      }
+
+      // Busca vínculos desse CPF
+      const links: Omit<Node, 'x' | 'y'>[] = [];
+      cnpjs.filter(c => c.primaryLinkCpf === cpf).forEach(c => {
+        links.push({ id: `cnpj-${c.id}`, type: 'CNPJ', title: c.companyName, subtitle: c.cnpj, color: '#10B981', primaryLinkCpf: c.primaryLinkCpf });
       });
-    });
+      properties.filter(p => p.primaryLinkCpf === cpf).forEach(p => {
+        links.push({ id: `property-${p.id}`, type: 'IMÓVEL', title: p.description, subtitle: p.address, color: '#F59E0B', primaryLinkCpf: p.primaryLinkCpf });
+      });
+      vehicles.filter(v => v.primaryLinkCpf === cpf).forEach(v => {
+        links.push({ id: `vehicle-${v.id}`, type: 'VEÍCULO', title: `${v.brand} ${v.model}`, subtitle: v.plate, color: '#EF4444', primaryLinkCpf: v.primaryLinkCpf });
+      });
+      phones.filter(p => p.primaryLinkCpf === cpf).forEach(p => {
+        links.push({ id: `phone-${p.id}`, type: 'TELEFONE', title: p.number, subtitle: p.owner, color: '#8B5CF6', primaryLinkCpf: p.primaryLinkCpf });
+      });
+      socialNetworks.filter(s => s.primaryLinkCpf === cpf).forEach(s => {
+        links.push({ id: `social-${s.id}`, type: 'REDE SOCIAL', title: s.platform, subtitle: s.profileName, color: '#EC4899', primaryLinkCpf: s.primaryLinkCpf, platform: s.platform });
+      });
+      financials.filter(f => f.primaryLinkCpf === cpf).forEach(f => {
+        links.push({ id: `financial-${f.id}`, type: 'FINANCEIRO', title: f.transactionType, subtitle: `R$ ${f.amount.toLocaleString()}`, color: '#06B6D4', primaryLinkCpf: f.primaryLinkCpf });
+      });
+      corporates.filter(c => c.involvedCpf === cpf).forEach(c => {
+        links.push({ id: `corporate-${c.id}`, type: 'EMPRESARIAL', title: c.involvedName, subtitle: c.sector, color: '#84CC16', primaryLinkCpf: c.involvedCpf });
+      });
 
-    const otherData: Omit<Node, 'x' | 'y'>[] = [];
-    
-    // Filtra todos os outros dados
-    cnpjs.filter(c => c.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(c => otherData.push({ id: `cnpj-${c.id}`, type: 'CNPJ', title: c.companyName, subtitle: c.cnpj, color: '#10B981', primaryLinkCpf: c.primaryLinkCpf }));
-    properties.filter(p => p.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(p => otherData.push({ id: `property-${p.id}`, type: 'IMÓVEL', title: p.description, subtitle: p.address, color: '#F59E0B', primaryLinkCpf: p.primaryLinkCpf }));
-    vehicles.filter(v => v.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(v => otherData.push({ id: `vehicle-${v.id}`, type: 'VEÍCULO', title: `${v.brand} ${v.model}`, subtitle: v.plate, color: '#EF4444', primaryLinkCpf: v.primaryLinkCpf }));
-    phones.filter(p => p.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(p => otherData.push({ id: `phone-${p.id}`, type: 'TELEFONE', title: p.number, subtitle: p.owner, color: '#8B5CF6', primaryLinkCpf: p.primaryLinkCpf }));
-    socialNetworks.filter(s => s.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(s => otherData.push({ id: `social-${s.id}`, type: 'REDE SOCIAL', title: s.platform, subtitle: s.profileName, color: '#EC4899', primaryLinkCpf: s.primaryLinkCpf }));
-    financials.filter(f => f.primaryLinkCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(f => otherData.push({ id: `financial-${f.id}`, type: 'FINANCEIRO', title: f.transactionType, subtitle: `R$ ${f.amount.toLocaleString()}`, color: '#06B6D4', primaryLinkCpf: f.primaryLinkCpf }));
-    corporates.filter(c => c.involvedCpf?.replace(/\D/g, '').includes(searchedCpfClean)).forEach(c => otherData.push({ id: `corporate-${c.id}`, type: 'EMPRESARIAL', title: c.involvedName, subtitle: c.sector, color: '#84CC16', primaryLinkCpf: c.involvedCpf }));
+      // CPFs vinculados a este CPF
+      const linkedCpfs = cpfs.filter(c => c.primaryLinkCpf === cpf && c.cpf !== cpf);
+      linkedCpfs.forEach((linked, idx) => {
+        const linkedNodeId = `cpf-${linked.id}`;
+        let lx, ly;
+        if (existingNodePositions[linkedNodeId]) {
+          lx = existingNodePositions[linkedNodeId].x;
+          ly = existingNodePositions[linkedNodeId].y;
+        } else {
+          const angle = Math.PI + (idx * 2 * Math.PI) / Math.max(linkedCpfs.length, 1);
+          lx = x + cpfRadius * Math.cos(angle);
+          ly = y + cpfRadius * Math.sin(angle);
+        }
+        nodesToProcess.push({ cpf: linked.cpf, x: lx, y: ly, depth: depth + 1 });
+      });
 
-    // Posiciona os nós em um círculo
-    const centerX = 600, centerY = 400, radius = 250;
-    const angleStep = (2 * Math.PI) / Math.max(otherData.length, 1);
-    otherData.forEach((node, index) => {
-      const angle = index * angleStep;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-      filteredNodes.push({ ...node, x: Math.round(x), y: Math.round(y) });
-    });
+      // Posiciona os vínculos ao redor do CPF
+      links.forEach((link, idx) => {
+        let vx, vy;
+        if (existingNodePositions[link.id]) {
+          vx = existingNodePositions[link.id].x;
+          vy = existingNodePositions[link.id].y;
+        } else {
+          const angle = (idx * 2 * Math.PI) / Math.max(links.length, 1);
+          vx = x + linkRadius * Math.cos(angle);
+          vy = y + linkRadius * Math.sin(angle);
+        }
+        if (!nodeMap.has(link.id)) {
+          nodeMap.set(link.id, { ...link, x: Math.round(vx), y: Math.round(vy) });
+        }
+      });
+    }
 
-    console.log('✅ Nós finais criados:', filteredNodes.length);
-    setNodes(filteredNodes);
-
-  }, [searchedCpf, cpfs, cnpjs, properties, vehicles, phones, socialNetworks, financials, corporates]);
+    setNodes(Array.from(nodeMap.values()));
+    // Expande todos os CPFs automaticamente, mantendo os já expandidos
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+      Array.from(nodeMap.values())
+        .filter(n => n.type === 'CPF')
+        .forEach(n => newSet.add(n.id));
+        return newSet;
+      });
+  }, [searchedCpfs, cpfs, cnpjs, properties, vehicles, phones, socialNetworks, financials, corporates]);
 
   return (
     <div style={{ 
@@ -814,6 +1061,52 @@ const CriminalBoard: React.FC = () => {
       position: 'relative',
       backgroundColor: '#f8fafc'
     }}>
+      {searchedCpfs.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '0',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1100,
+          display: 'flex',
+          gap: '8px',
+          marginTop: '8px',
+          background: 'rgba(255,255,255,0.95)',
+          borderRadius: '8px',
+          padding: '8px 16px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          {searchedCpfs.map(cpf => (
+            <span key={cpf} style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#F3F4F6',
+              borderRadius: '6px',
+              padding: '4px 10px',
+              fontSize: '13px',
+              color: '#181a1b',
+              fontWeight: 500,
+              marginRight: '4px',
+              marginBottom: '4px',
+              border: '1px solid #e5e7eb'
+            }}>
+              {cpf}
+              <button onClick={() => handleRemoveCpf(cpf)} style={{
+                marginLeft: '6px',
+                background: 'none',
+                border: 'none',
+                color: '#EF4444',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '15px',
+                lineHeight: 1
+              }} title="Remover CPF">×</button>
+            </span>
+          ))}
+        </div>
+      )}
       <EditModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -963,7 +1256,7 @@ const CriminalBoard: React.FC = () => {
             </>
           )}
         </button>
-        {searchedCpf && (
+        {searchedCpfs.length > 0 && (
           <button
             onClick={handleClearSearch}
             style={{
@@ -1040,7 +1333,7 @@ const CriminalBoard: React.FC = () => {
       </div>
 
       {/* Mensagem quando não há busca */}
-      {!searchedCpf && (
+      {!searchedCpfs.length && (
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -1117,7 +1410,15 @@ const CriminalBoard: React.FC = () => {
         </svg>
 
         {/* Nodes */}
-        {nodes.map((node) => (
+        {nodes.filter(node => {
+          if (node.type === 'CPF') {
+            // Sempre mostra todos os CPFs (principal e vinculados)
+              return true;
+          }
+          // Se não é CPF, só mostra se o CPF vinculado está expandido
+          const linkedCpfNode = nodes.find(n => n.type === 'CPF' && n.subtitle === node.primaryLinkCpf);
+          return linkedCpfNode && expandedNodes.has(linkedCpfNode.id);
+        }).map((node) => (
           <div
             key={node.id}
             style={{
@@ -1145,9 +1446,14 @@ const CriminalBoard: React.FC = () => {
               color: 'white',
               marginBottom: '6px'
             }}>
-              <GenericIcon type={node.type} size={28} />
+              <GenericIcon type={node.type} size={28} platform={node.platform} />
             </div>
-            
+            {/* Badge para CPF principal/vinculado */}
+            {node.type === 'CPF' && (
+              <div style={{position:'absolute',top:6,left:6,background:'#fff',color:'#3B82F6',borderRadius:'6px',padding:'2px 6px',fontSize:'10px',fontWeight:'bold',boxShadow:'0 1px 4px #0002'}}>
+                {searchedCpfs.includes(node.subtitle) ? 'PRINCIPAL' : 'VINCULADO'}
+              </div>
+            )}
             {/* Texto do título */}
             <div style={{
               fontSize: '9px',
@@ -1162,7 +1468,6 @@ const CriminalBoard: React.FC = () => {
             }}>
               {node.title}
             </div>
-            
             {/* Texto do subtítulo */}
             <div style={{
               fontSize: '7px',
@@ -1175,14 +1480,45 @@ const CriminalBoard: React.FC = () => {
             }}>
               {node.subtitle}
             </div>
-            
+            {/* Botões de ação */}
+            <div style={{
+              position: 'absolute',
+              top: '6px',
+              right: '6px',
+              display: 'flex',
+              gap: '4px',
+              zIndex: 3
+            }}>
+              {/* Botão de expandir/recolher: sempre para todos os CPFs */}
+              {node.type === 'CPF' && (
+                <button
+                  onMouseDown={(e) => handleToggleExpansion(e, node.id)}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#374151',
+                    fontSize: '10px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                  title={expandedNodes.has(node.id) 
+                    ? `Recolher vínculos`
+                    : `Expandir vínculos`
+                  }
+                >
+                  <ExpandIcon isExpanded={expandedNodes.has(node.id)} size={10} />
+                </button>
+              )}
             {/* Botão de edição */}
             <button
               onMouseDown={(e) => handleEdit(e, node.id)}
               style={{
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
                 width: '20px',
                 height: '20px',
                 backgroundColor: 'rgba(255,255,255,0.9)',
@@ -1194,13 +1530,13 @@ const CriminalBoard: React.FC = () => {
                 justifyContent: 'center',
                 color: '#374151',
                 fontSize: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                zIndex: 3
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
               }}
               title="Editar"
             >
               <EditIcon size={10} />
             </button>
+            </div>
           </div>
         ))}
       </div>

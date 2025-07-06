@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, X, FileText, Download, Trash2 } from 'lucide-react';
+import { Upload, X, FileText, FileImage, File } from 'lucide-react';
 import { FileAttachment } from '../types';
 
 interface FileUploadProps {
@@ -13,50 +13,65 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onDocumentsChange, 
   label = "Anexos" 
 }) => {
-  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach(file => {
-        formData.append('files', file);
-      });
-
-      const response = await fetch('http://localhost:3001/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const newDocuments = result.files.map((file: any) => ({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: `http://localhost:3001${file.url}`,
-          uploadedAt: file.uploadedAt,
-        }));
-        
-        onDocumentsChange([...documents, ...newDocuments]);
-      } else {
-        console.error('Erro ao fazer upload dos arquivos');
-        alert('Erro ao fazer upload dos arquivos');
-      }
-    } catch (error) {
-      console.error('Erro ao fazer upload:', error);
-      alert('Erro ao fazer upload dos arquivos');
-    } finally {
-      setUploading(false);
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
     }
   };
 
-  const removeDocument = (documentId: string) => {
-    onDocumentsChange(documents.filter(doc => doc.id !== documentId));
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      handleFiles(e.target.files);
+    }
+  };
+
+  const handleFiles = (files: FileList) => {
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newDocument: FileAttachment = {
+          id: Date.now().toString(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: e.target?.result as string,
+          uploadedAt: new Date().toISOString()
+        };
+        onDocumentsChange([...documents, newDocument]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeDocument = (id: string) => {
+    onDocumentsChange(documents.filter(doc => doc.id !== id));
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith('image/')) {
+      return <FileImage className="h-4 w-4" />;
+    } else if (type.includes('pdf')) {
+      return <FileText className="h-4 w-4" />;
+    } else {
+      return <File className="h-4 w-4" />;
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -69,35 +84,44 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
         {label}
       </label>
       
-      {/* Upload Area */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+      {/* Área de Upload */}
+      <div
+        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+          dragActive 
+            ? 'border-blue-500 bg-blue-50' 
+            : 'border-gray-300 hover:border-gray-400'
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
         <input
           type="file"
           multiple
-          className="hidden"
-          id="file-upload"
-          onChange={handleFileUpload}
-          disabled={uploading}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          onChange={handleChange}
+          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
         />
-        <label htmlFor="file-upload" className="cursor-pointer">
-          <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+        <div className="space-y-2">
+          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
           <p className="text-sm text-gray-600">
-            {uploading ? 'Fazendo upload...' : 'Clique para anexar arquivos ou arraste e solte'}
+            Arraste arquivos aqui ou clique para selecionar
           </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Suporta múltiplos arquivos (PDF, DOC, DOCX, JPG, PNG, etc.)
+          <p className="text-xs text-gray-500">
+            PDF, DOC, DOCX, TXT, JPG, PNG, GIF (máx. 10MB cada)
           </p>
-        </label>
+        </div>
       </div>
 
-      {/* Documents List */}
+      {/* Lista de Documentos */}
       {documents.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Arquivos anexados:</h4>
+          <h4 className="text-sm font-medium text-gray-700">Documentos anexados:</h4>
           <div className="space-y-2">
             {documents.map((doc) => (
               <div
@@ -105,32 +129,24 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
               >
                 <div className="flex items-center space-x-3">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                  {getFileIcon(doc.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {doc.name}
+                    </p>
                     <p className="text-xs text-gray-500">
-                      {formatFileSize(doc.size)} • {doc.type}
+                      {formatFileSize(doc.size)}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                  <button
-                    onClick={() => removeDocument(doc.id)}
-                    className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                    title="Remover"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => removeDocument(doc.id)}
+                  className="text-red-500 hover:text-red-700 p-1"
+                  title="Remover documento"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </div>

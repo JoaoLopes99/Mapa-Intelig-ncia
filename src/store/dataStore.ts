@@ -102,7 +102,7 @@ interface DataState {
   clearAllData: () => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL + '/api';
+const API_BASE_URL = (import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3001') + '/api';
 
 export const useDataStore = create<DataState>((set, get) => ({
   // Estado inicial

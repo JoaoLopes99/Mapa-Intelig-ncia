@@ -19,7 +19,7 @@ interface AuthState {
   setUser: (user: User) => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL + '/api';
+const API_BASE_URL = (import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3001') + '/api';
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,

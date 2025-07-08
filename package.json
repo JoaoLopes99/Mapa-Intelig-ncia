@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "concurrently \"npm run dev\" \"cd server && npm run dev\"",
-    "start:prod": "concurrently \"npm run dev\" \"cd server && npm start\"",
+    "start:prod": "concurrently \"npm run preview\" \"cd server && npm start\"",
     "deploy:frontend": "npm run build && vercel --prod",
     "deploy:backend": "cd server && npm run build && vercel --prod",
     "postinstall": "npm run build"
